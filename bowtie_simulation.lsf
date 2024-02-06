@@ -10,6 +10,12 @@ select("::model::mesh_waveguide");
 delete;
 select("::model::source");
 delete;
+select("::model::field_profile");
+delete;
+select("::model::index_monitor");
+delete;
+select("::model::FDTD");
+delete;
 groupscope("::model");
 
 # list variables
@@ -34,14 +40,14 @@ b_y_max = b_y_min + b_y_span;
 
 # substrate
 s_index = 1.4;
-s_material = "Ag (Silver) - CRC";
+s_material = "SiO2 (Glass) - Palik";
 edge_offset = 0.5e-6;
 s_x_max = b_x_max + edge_offset;
 s_x_min = b_x_min - edge_offset;
 s_y_max = b_y_max + edge_offset;
 s_y_min = b_y_min - edge_offset;
 s_z_span = b_z_span;
-s_z_max = b_z_min;
+s_z_max = b_z_max;
 s_z_min = s_z_max - s_z_span;
 
 ## Parameters used for the signal analysis
@@ -208,10 +214,15 @@ set('script',substrate_script);
 addmesh;
 set("name","mesh_waveguide");
 # set dimension
-set("based on a structure", 1);
-set("structure", "bowtie");
-set("z span", 7e-7);
-#set("z min",b_z_min);
+#set("based on a structure", 1);
+#set("structure", "bowtie");
+set("x", 0);
+set("x span", s_x_max-s_x_min);
+set("y", 0);
+set("y span", s_y_max-s_y_min);
+set("z", b_z_span/2);
+set("z span", 0);
+#set("z min",b_z_min)
 #set("z max",b_z_max);
 # enable in X direction and disable in Y,Z directions
 set("override x mesh",1);
@@ -219,7 +230,7 @@ set("override y mesh",0);
 #set("override z mesh",0);
 # restrict mesh by defining maximum step size
 set("set maximum mesh step",1);
-set("dx",5e-9);
+set("dx",5e-8);
 
 
 
@@ -229,11 +240,42 @@ addtfsf;
 set("injection axis","z");
 set("direction","backward");
 set("x",0);
-set("x span",2e-6);
+set("x span",s_x_max-s_x_min);
 set("y",0);
-set("y span",2e-6);
+set("y span",s_y_max-s_y_min);
 set("z",0);
 set("z span",0.5e-6);
 set("wavelength start",0.3e-6);
 set("wavelength stop",1.2e-6);
 
+
+addindex;
+set("name","index_monitor");
+set("monitor type",2);  # 2D z-normal
+set("x",0);
+set("x span",5e-6);
+set("y",0);
+#set("y span",5e-6);
+set("z",0);
+
+
+addpower;
+set("name","field_profile");
+set("monitor type",7);  # 2D z-normal
+set("x",0);
+set("x span",5e-6);
+set("y",0);
+set("y span",5e-6);
+set("z",b_z_span/2);
+
+addfdtd;
+set("dimension",2);  #  1 = 2D, 2 = 3D
+set("x",0);
+set("x span",s_x_max-s_x_min);
+set("y",0);
+set("y span",s_y_max-s_y_min);
+set("z",0);
+set("z span",s_z_span*2);
+
+
+run;
