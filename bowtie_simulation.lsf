@@ -4,16 +4,20 @@ closeall;
 switchtolayout;
 groupscope("::model::bowtie");
 delete;
-groupscope("::model::substrate");
+groupscope("::model::sources");
+delete;
+#groupscope("::model::substrate");
+#delete;
+select("::model::substrate");
 delete;
 select("::model::mesh_waveguide");
 delete;
-select("::model::source");
+select("::model::index_monitor");
 delete;
 select("::model::field_profile");
 delete;
-select("::model::index_monitor");
-delete;
+#select("::model::sources");
+#delete;
 select("::model::FDTD");
 delete;
 groupscope("::model");
@@ -22,14 +26,14 @@ groupscope("::model");
 # bowtie
 b_index = 1.4;
 b_material = "Ag (Silver) - CRC";
-b_x_span = 0.5e-06;
-b_y_span = 0.5e-06;
-b_z_span = 0.5e-06;
-b_radius = 0.5e-06;
+b_x_span = 100e-09;
+b_y_span = 100e-09;
+b_z_span = 50e-09;
+b_radius = 100e-09;
 b_n_sides = 3;
 b_res_corner = 10;
-b_d_cavity = 0.1e-06;
-b_radius_corner = 0.1e-06;
+b_d_cavity = 20e-09;
+b_radius_corner = 10e-09;
 b_z_min = 0;
 b_z_max = b_z_min + b_z_span;
 
@@ -41,7 +45,10 @@ b_y_max = b_y_min + b_y_span;
 # substrate
 s_index = 1.4;
 s_material = "SiO2 (Glass) - Palik";
-edge_offset = 0.5e-6;
+edge_offset = 10e-8;
+s_mesh_order = 4;
+#s_x_max = b_x_max + edge_offset;
+#s_x_min = b_x_min - edge_offset;
 s_x_max = b_x_max + edge_offset;
 s_x_min = b_x_min - edge_offset;
 s_y_max = b_y_max + edge_offset;
@@ -136,10 +143,10 @@ addpoly;
 set(\"x\",-x_span-d_cavity/2);
 #set(\"radius\",radius);
 set(\"y\",0);
-set(\"z\",0);
+set(\"z\",(z_max-z_min)/2);
 set(\"vertices\",V);
-set(\"z max\",z_max);
-set(\"z min\",z_min);
+set(\"z span\",(z_max-z_min));
+#set(\"z min\",z_min);
 set(\"material\",material);
 if(get(\"material\")==\"<Object defined dielectric>\") 
   { set(\"index\",index); } 
@@ -153,6 +160,7 @@ set(\"vertices\",V);
 set(\"z max\",z_max);
 set(\"z min\",z_min);
 set(\"material\",material);
+#setmaterial(material, \"mesh order\", 
 set(\"first axis\",3);
 set(\"rotation 1\",180);
 if(get(\"material\")==\"<Object defined dielectric>\") 
@@ -161,6 +169,7 @@ if(get(\"material\")==\"<Object defined dielectric>\")
 # insert script within structure group
 set('script',bowtie_script);
 
+###########################
 # adding substrate group
 addstructuregroup;
 set("name", "substrate");
@@ -178,6 +187,7 @@ adduserprop("y min", 2, s_y_min);
 adduserprop("z span", 2, s_z_span);
 adduserprop("z max", 2, s_z_max);
 adduserprop("z min", 2, s_z_min);
+adduserprop("mesh order", 0, s_mesh_order);
 set("construction group",1);
 
 substrate_script = "
@@ -193,23 +203,49 @@ z_span = %z span%;
 z_max = %z max%;
 z_min = %z min%;
 
+mesh_order = %mesh order%;
+
 addrect;
 set(\"x\",0);
 set(\"y\",0);
 set(\"z\",0);
-
-set(\"z max\",z_max);
-set(\"z min\",z_min);
+set(\"z span\",(z_max-z_min)*2);
+#set(\"z\",-z_span/2);
+#set(\"z span\",z_span);
+#set(\"z max\",z_max);
+#set(\"z min\",z_min);
 set(\"x max\",x_max);
 set(\"x min\",x_min);
 set(\"y max\",y_max);
 set(\"y min\",y_min);
 set(\"material\",material);
+set(\"override mesh order from material database\",1);
+#setmaterial(mateerial, \"mesh order\", mesh_order);
+set(\"mesh order\", mesh_order);
 if(get(\"material\")==\"<Object defined dielectric>\") 
   { set(\"index\",index); }";
 
 # insert script within structure group
 set('script',substrate_script);
+
+
+############################
+## adding substrate
+
+#addrect;
+#set("name", "substrate");
+#set("z",0);
+#set("z span",(s_z_max-s_z_min)*2);
+#set("x max",s_x_max);
+#set("x min",s_x_min);
+#set("y max",s_y_max);
+#set("y min",s_y_min);
+##set("material",s_material);
+#setmaterial(s_material, "mesh order", s_mesh_order);
+#if(get("material")=="<Object defined dielectric>") 
+  #{ set("index",index); }";
+
+
 
 addmesh;
 set("name","mesh_waveguide");
@@ -226,56 +262,117 @@ set("z span", 0);
 #set("z max",b_z_max);
 # enable in X direction and disable in Y,Z directions
 set("override x mesh",1);
-set("override y mesh",0);
+set("override y mesh",1);
 #set("override z mesh",0);
 # restrict mesh by defining maximum step size
 set("set maximum mesh step",1);
-set("dx",5e-8);
+set("dx",5e-10);
+set("dy",5e-10);
 
+# adding sourcelayoutgroup
 
-
+addgroup;
+set("name", "sources");
+set("x", 0);
+set("y", 0);
+set("z", 0);
 # adding source 
 addtfsf;
+set("injection axis","x");
+set("direction","forward");
+set("x",0);
+set("x span",s_x_max-s_x_min);
+set("y",0);
+set("y span",s_y_max-s_y_min);
+set("z",s_z_span/2);
+set("z span",s_z_span);
+set("wavelength start",0.3e-6);
+set("wavelength stop",1.2e-6);
+addtogroup("sources");
 
-set("injection axis","z");
+addtfsf;
+set("injection axis","x");
 set("direction","backward");
 set("x",0);
 set("x span",s_x_max-s_x_min);
 set("y",0);
 set("y span",s_y_max-s_y_min);
-set("z",0);
-set("z span",0.5e-6);
+set("z",s_z_span/2);
+set("z span",s_z_span);
 set("wavelength start",0.3e-6);
 set("wavelength stop",1.2e-6);
+addtogroup("sources");
 
+addtfsf;
+set("injection axis","y");
+set("direction","backward");
+set("x",0);
+set("x span",s_x_max-s_x_min);
+set("y",0);
+set("y span",s_y_max-s_y_min);
+set("z",s_z_span/2);
+set("z span",s_z_span);
+set("wavelength start",0.3e-6);
+set("wavelength stop",1.2e-6);
+addtogroup("sources");
 
+addtfsf;
+set("injection axis","y");
+set("direction","forward");
+set("x",0);
+set("x span",s_x_max-s_x_min);
+set("y",0);
+set("y span",s_y_max-s_y_min);
+set("z",s_z_span*2);
+set("z span",2*s_z_span);
+set("wavelength start",0.3e-6);
+set("wavelength stop",1.2e-6);
+addtogroup("sources");
+
+addtfsf;
+set("injection axis","z");
+set("direction","forward");
+set("x",0);
+set("x span",s_x_max-s_x_min);
+set("y",0);
+set("y span",s_y_max-s_y_min);
+set("z",s_z_span/2);
+set("z span",s_z_span);
+set("wavelength start",0.3e-6);
+set("wavelength stop",1.2e-6);
+addtogroup("sources");
+
+# adding index monitor
 addindex;
 set("name","index_monitor");
 set("monitor type",2);  # 2D z-normal
 set("x",0);
-set("x span",5e-6);
+set("x span",s_x_max-s_x_min);
 set("y",0);
 #set("y span",5e-6);
 set("z",0);
+set("z span",2*s_z_span);
 
 
 addpower;
 set("name","field_profile");
 set("monitor type",7);  # 2D z-normal
-set("x",0);
-set("x span",5e-6);
-set("y",0);
-set("y span",5e-6);
-set("z",b_z_span/2);
-
-addfdtd;
-set("dimension",2);  #  1 = 2D, 2 = 3D
+set("apodization", 3);
 set("x",0);
 set("x span",s_x_max-s_x_min);
 set("y",0);
 set("y span",s_y_max-s_y_min);
-set("z",0);
-set("z span",s_z_span*2);
+set("z",b_z_span/2);
 
+addfdtd;
+set("simulation time", 0.1e-12);
+set("dimension",1);  #  1 = 2D, 2 = 3D
+set("x",0);
+set("x span",s_x_max-s_x_min);
+set("y",0);
+set("y span",s_y_max-s_y_min);
+set("z",b_z_span/2);
+#set("z span",s_z_span*2);
 
+#debug;
 run;
